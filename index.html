@@ -192,6 +192,12 @@
       Entry.init(document.getElementById('entryContainer'), { type: 'minimize' });
       console.log(TAG, 'Entry.init(minimize) 완료');
 
+      // 엔진 내장 에셋(_1x1.png·시스템 사운드 등) 경로를 자체 호스팅 폴더로 지정
+      try {
+        Entry.mediaFilePath = new URL('engine-assets/', location.href).href;
+        console.log(TAG, 'mediaFilePath =', Entry.mediaFilePath);
+      } catch(e){ console.warn(TAG, 'mediaFilePath 설정 실패', e); }
+
       // 3) 프로젝트 적용
       Entry.loadProject(project);
       console.log(TAG, 'Entry.loadProject 완료');
