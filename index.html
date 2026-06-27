@@ -191,6 +191,23 @@
 
       // 2) 초기화 (실행 전용 minimize 모드)
       if (Entry.Event) Entry.creationChangedEvent = new Entry.Event(window);
+      // createjs 'NEXT' 빌드 내부 불일치 보정:
+      // SoundJS의 _handlePreloadComplete 는 공개 setPlaybackResource() 를 호출하지만
+      // 이 빌드의 SoundInstance 에는 비공개 _setPlaybackResource 만 있어, 소리 디코딩
+      // 완료 때마다 throw → createjs 로딩 큐가 중간에 끊겨 일부 이미지(SVG)가 안 올라옴.
+      // 빠진 공개 메서드를 보강해 다리를 놓는다. (소리 복구 + 끊긴 큐 완주 → 빨간 X 해소)
+      try {
+        var ASI = window.createjs && createjs.AbstractSoundInstance;
+        if (ASI && ASI.prototype && typeof ASI.prototype.setPlaybackResource !== 'function') {
+          ASI.prototype.setPlaybackResource = function(resource){
+            if (typeof this._setPlaybackResource === 'function') this._setPlaybackResource(resource);
+            else { try { this.playbackResource = resource; } catch(_){} }
+            return this;
+          };
+          console.log(TAG, 'createjs setPlaybackResource 패치 적용');
+        }
+      } catch(e){ console.warn(TAG, 'createjs 패치 실패:', e.message); }
+
       // 엔진 내장 에셋이 저장소 '루트'에 있다. init 은 내부에서 mediaFilePath 를
       // 기본 경로로 덮어쓰고 '그 자리에서' 에셋 로딩을 시작하므로, init 보다 '먼저'
       // mediaFilePath 를 '/' 로 고정(getter)해 init 의 덮어쓰기를 무력화한다.
