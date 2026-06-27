@@ -30,6 +30,7 @@
   /* 게임이 그려질 컨테이너 (16:9) */
   .stage{
     position:relative; aspect-ratio:16 / 9;
+    flex:0 0 auto; align-self:center;     /* flex 가 세로로 늘리지 못하게 → 16:9 유지 */
     width:min(100%, calc((100dvh - 2*var(--pad)) * 16 / 9));
     width:min(100%, calc((100vh - 2*var(--pad)) * 16 / 9));
     max-width:1200px;
@@ -37,10 +38,10 @@
     border:1px solid var(--line);
     box-shadow:0 1px 2px rgba(20,23,28,.04), 0 18px 50px -24px rgba(20,23,28,.22);
   }
-  /* 엔트리가 만든 캔버스를 컨테이너에 꽉 채움 (둘 다 16:9라 왜곡 없음) */
-  /* 엔트리 캔버스를 스테이지(16:9)에 절대배치로 채움 → 내부 wrapper 높이붕괴 무시 */
-  #entryContainer canvas{ position:absolute !important; inset:0; width:100% !important; height:100% !important; display:block !important; }
-  #entryContainer > div, #entryContainer .entryContainerWorkspace{ position:absolute; inset:0; width:100%; height:100%; }
+  /* 캔버스는 스테이지(16:9)를 채우되 왜곡 없이(object-fit), 최상단에서 클릭을 받음 */
+  #entryContainer canvas{ position:absolute !important; inset:0 !important; width:100% !important; height:100% !important; display:block !important; object-fit:contain; z-index:2; pointer-events:auto !important; }
+  /* 엔트리가 만든 래퍼/오버레이 div 가 캔버스 클릭을 가로채지 않도록 통과시킴 */
+  #entryContainer > div, #entryContainer .entryContainerWorkspace{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 
   /* 로딩 / 에러 오버레이 */
   .overlay{
@@ -251,7 +252,12 @@
       setTimeout(() => {
         try {
           const cv = document.querySelector('#entryContainer canvas');
-          if (cv) console.log(TAG, '🖥 canvas 내부:', cv.width + 'x' + cv.height, '| 표시크기:', cv.offsetWidth + 'x' + cv.offsetHeight);
+          const st = document.getElementById('entryContainer');
+          if (st) console.log(TAG, '📐 스테이지:', st.clientWidth + 'x' + st.clientHeight, '(16:9면', Math.round(st.clientWidth*9/16) + ' 높이)');
+          if (cv) {
+            var r = cv.getBoundingClientRect();
+            console.log(TAG, '🖥 canvas 내부:', cv.width + 'x' + cv.height, '| 화면상:', Math.round(r.width) + 'x' + Math.round(r.height), '| z:', getComputedStyle(cv).zIndex, '| pe:', getComputedStyle(cv).pointerEvents);
+          }
           else console.warn(TAG, '🖥 canvas 없음');
           var sc = (Entry.scene && Entry.scene.selectedScene) ? Entry.scene.selectedScene : null;
           console.log(TAG, '🎬 현재 씬:', sc ? (sc.name + ' (id=' + sc.id + ')') : '?');
