@@ -43,6 +43,12 @@
   /* 엔트리가 만든 래퍼/오버레이 div 가 캔버스 클릭을 가로채지 않도록 통과시킴 */
   #entryContainer > div, #entryContainer .entryContainerWorkspace{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 
+  /* ===== 세로(portrait) 메인판 확대 모드 — 스테이지를 화면 전체로, 테두리 제거 ===== */
+  body.pmode{ overflow:hidden; }
+  body.pmode .wrap{ padding:0; min-height:100dvh; min-height:100vh; }
+  body.pmode .stage{ border:0; border-radius:0; box-shadow:none; max-width:none; background:#000; }
+  body.pmode .hint{ display:none !important; }   /* 세로는 의도된 화면이라 '가로로 돌리세요' 안내 숨김 */
+
   /* 로딩 / 에러 오버레이 */
   .overlay{
     position:absolute; inset:0; z-index:5;
@@ -240,23 +246,48 @@
         }
       } catch(e){ console.warn(TAG, 'start 오류:', e.message); }
 
-      // 5) 스테이지를 '정확히 16:9 픽셀'로 강제 → CSS aspect-ratio 불안정 + 흰 띠(레터박스) 제거
+      // 5) 레이아웃: 가로=전체 16:9 / 세로=가운데 메인판만 확대해 꽉 채움(양옆 자동 잘림)
       const PAD = 16;
-      const sizeStage = () => {
+      // ===== 세로 메인판 확대 튜닝값 (스크린샷 보며 이 두 값만 조정) =====
+      const PORTRAIT_ZOOM = 1.0;      // 1.0=높이 꽉 채움(좌우 보이는 폭 최대). ↑더 확대(더 좁게) / ↓위아래 여백 생김
+      const PORTRAIT_CENTER_PX = 320; // 가로 중심점(캔버스 0~640, 320=한가운데). ↓왼쪽이 더 보임 / ↑오른쪽이 더 보임
+      // ================================================================
+      const layout = () => {
         const st = document.getElementById('entryContainer');
         if (!st) return;
-        const aw = window.innerWidth - 2*PAD, ah = window.innerHeight - 2*PAD;
-        let w = Math.min(aw, 1200), h = w * 9/16;
-        if (h > ah) { h = ah; w = h * 16/9; }
-        st.style.width  = Math.floor(w) + 'px';
-        st.style.height = Math.floor(h) + 'px';
+        const cv = st.querySelector('canvas');
+        const W = window.innerWidth, H = window.innerHeight;
+        const portrait = W < H;
+        if (portrait && cv) {
+          // 세로: 캔버스를 화면 높이에 꽉 차게 확대 → 가로 중앙만 보이고 양옆(스킬·오른칸)은 잘림
+          document.body.classList.add('pmode');
+          st.style.width = W + 'px';
+          st.style.height = H + 'px';
+          const scale = (H / 360) * PORTRAIT_ZOOM;
+          const cw = 640 * scale, ch = 360 * scale;
+          cv.style.setProperty('position', 'absolute', 'important');
+          cv.style.setProperty('inset', 'auto', 'important');
+          cv.style.setProperty('object-fit', 'fill', 'important');
+          cv.style.setProperty('width',  cw + 'px', 'important');
+          cv.style.setProperty('height', ch + 'px', 'important');
+          cv.style.setProperty('left', (W/2 - PORTRAIT_CENTER_PX * scale) + 'px', 'important');
+          cv.style.setProperty('top',  (H/2 - 180 * scale) + 'px', 'important');  // 180 = 캔버스 세로 중앙
+        } else {
+          // 가로: 전체 게임을 정확히 16:9 픽셀로
+          document.body.classList.remove('pmode');
+          if (cv) ['position','inset','object-fit','width','height','left','top'].forEach(p => cv.style.removeProperty(p));
+          const aw = W - 2*PAD, ah = H - 2*PAD;
+          let w = Math.min(aw, 1200), h = w * 9/16;
+          if (h > ah) { h = ah; w = h * 16/9; }
+          st.style.width  = Math.floor(w) + 'px';
+          st.style.height = Math.floor(h) + 'px';
+        }
         try { Entry.windowResized && Entry.windowResized(); } catch(e){}
       };
-      sizeStage();
-      // 캔버스가 막 생성되며 크기가 변할 수 있어 몇 차례 더 맞춰줌
-      [60, 250, 600, 1200].forEach(function(t){ setTimeout(sizeStage, t); });
-      window.addEventListener('resize', sizeStage);
-      window.addEventListener('orientationchange', () => setTimeout(sizeStage, 300));
+      layout();
+      [60, 250, 600, 1200].forEach(function(t){ setTimeout(layout, t); });
+      window.addEventListener('resize', layout);
+      window.addEventListener('orientationchange', () => setTimeout(layout, 300));
 
       console.log(TAG, '부팅 시퀀스 끝 — 화면이 보이면 성공입니다');
       setTimeout(hideOverlay, 600);
