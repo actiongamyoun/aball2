@@ -142,8 +142,12 @@
 <script src="lib/webfontloader.js"></script>
 <script src="lib/lang-ko.js"></script>
 <script src="lib/entry-tool.js"></script>
-<!-- 미사용 비디오(AI) 모듈 스텁: 부팅 때 참조만 되고 실제 실행되지 않음 -->
-<script>window.EntryVideoLegacy = window.EntryVideoLegacy || function(){};</script>
+<!-- 미사용 에디터 도구 전역 스텁: 부팅 때 참조만 되고 플레이어 실행 중엔 호출되지 않음 -->
+<script>
+  window.EntryVideoLegacy = window.EntryVideoLegacy || function(){};
+  window.EntrySoundEditor = window.EntrySoundEditor || function(){};
+  window.EntryPaint = window.EntryPaint || function(){};
+</script>
 <script src="lib/entry.min.js"></script>
 
 <!-- ===================== 부팅 ===================== -->
