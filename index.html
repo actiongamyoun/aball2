@@ -189,14 +189,11 @@
 
       // 2) 초기화 (실행 전용 minimize 모드)
       if (Entry.Event) Entry.creationChangedEvent = new Entry.Event(window);
+      // 엔진 내장 에셋(_1x1.png·sounds·media 등)이 저장소 '루트'에 올라가 있으므로
+      // mediaFilePath 를 루트('/')로 지정한다 → 파일을 옮길 필요가 없음
       Entry.init(document.getElementById('entryContainer'), { type: 'minimize' });
-      console.log(TAG, 'Entry.init(minimize) 완료');
-
-      // 엔진 내장 에셋(_1x1.png·시스템 사운드 등) 경로를 자체 호스팅 폴더로 지정
-      try {
-        Entry.mediaFilePath = new URL('engine-assets/', location.href).href;
-        console.log(TAG, 'mediaFilePath =', Entry.mediaFilePath);
-      } catch(e){ console.warn(TAG, 'mediaFilePath 설정 실패', e); }
+      Entry.mediaFilePath = '/';
+      console.log(TAG, 'Entry.init(minimize) 완료 — mediaFilePath =', Entry.mediaFilePath);
 
       // 3) 프로젝트 적용
       Entry.loadProject(project);
