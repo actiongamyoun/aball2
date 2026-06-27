@@ -240,10 +240,23 @@
         }
       } catch(e){ console.warn(TAG, 'start 오류:', e.message); }
 
-      // 5) 컨테이너 크기에 맞춰 리사이즈
-      const doResize = () => { try { Entry.windowResized && Entry.windowResized(); } catch(e){} };
-      doResize(); window.addEventListener('resize', doResize);
-      window.addEventListener('orientationchange', () => setTimeout(doResize, 300));
+      // 5) 스테이지를 '정확히 16:9 픽셀'로 강제 → CSS aspect-ratio 불안정 + 흰 띠(레터박스) 제거
+      const PAD = 16;
+      const sizeStage = () => {
+        const st = document.getElementById('entryContainer');
+        if (!st) return;
+        const aw = window.innerWidth - 2*PAD, ah = window.innerHeight - 2*PAD;
+        let w = Math.min(aw, 1200), h = w * 9/16;
+        if (h > ah) { h = ah; w = h * 16/9; }
+        st.style.width  = Math.floor(w) + 'px';
+        st.style.height = Math.floor(h) + 'px';
+        try { Entry.windowResized && Entry.windowResized(); } catch(e){}
+      };
+      sizeStage();
+      // 캔버스가 막 생성되며 크기가 변할 수 있어 몇 차례 더 맞춰줌
+      [60, 250, 600, 1200].forEach(function(t){ setTimeout(sizeStage, t); });
+      window.addEventListener('resize', sizeStage);
+      window.addEventListener('orientationchange', () => setTimeout(sizeStage, 300));
 
       console.log(TAG, '부팅 시퀀스 끝 — 화면이 보이면 성공입니다');
       setTimeout(hideOverlay, 600);
