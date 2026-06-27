@@ -38,8 +38,9 @@
     box-shadow:0 1px 2px rgba(20,23,28,.04), 0 18px 50px -24px rgba(20,23,28,.22);
   }
   /* 엔트리가 만든 캔버스를 컨테이너에 꽉 채움 (둘 다 16:9라 왜곡 없음) */
-  #entryContainer canvas{ display:block !important; width:100% !important; height:100% !important; }
-  #entryContainer > div, #entryContainer .entryContainerWorkspace{ width:100%; height:100%; }
+  /* 엔트리 캔버스를 스테이지(16:9)에 절대배치로 채움 → 내부 wrapper 높이붕괴 무시 */
+  #entryContainer canvas{ position:absolute !important; inset:0; width:100% !important; height:100% !important; display:block !important; }
+  #entryContainer > div, #entryContainer .entryContainerWorkspace{ position:absolute; inset:0; width:100%; height:100%; }
 
   /* 로딩 / 에러 오버레이 */
   .overlay{
@@ -211,9 +212,15 @@
       console.log(TAG, 'Entry.loadProject 완료');
 
       // 4) 실행 시작 (메서드가 버전마다 달라 방어적으로)
-      if (typeof Entry.start === 'function'){ Entry.start(); console.log(TAG, 'Entry.start()'); }
-      else if (Entry.engine && typeof Entry.engine.toggleRun === 'function'){ Entry.engine.toggleRun(); console.log(TAG, 'Entry.engine.toggleRun()'); }
-      else console.log(TAG, '자동 시작 메서드를 못 찾음 — 화면에 실행 버튼이 있으면 눌러보세요');
+      // 엔진 실제 실행 (녹색 깃발/시작하기 클릭과 동일하게 엔진을 run 시킴)
+      try {
+        if (Entry.engine && typeof Entry.engine.toggleRun === 'function') {
+          if (Entry.engine.state !== 'run') Entry.engine.toggleRun();
+          console.log(TAG, 'engine.toggleRun() → 상태:', Entry.engine.state);
+        } else if (typeof Entry.start === 'function') {
+          Entry.start(); console.log(TAG, 'Entry.start()');
+        }
+      } catch(e){ console.warn(TAG, 'start 오류:', e.message); }
 
       // 5) 컨테이너 크기에 맞춰 리사이즈
       const doResize = () => { try { Entry.windowResized && Entry.windowResized(); } catch(e){} };
