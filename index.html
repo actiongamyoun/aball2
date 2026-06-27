@@ -201,7 +201,12 @@
       console.log(TAG, 'Entry.init(minimize) 완료 — mediaFilePath =', Entry.mediaFilePath);
 
       // 3) 프로젝트 적용
-      Entry.loadProject(project);
+      // project.json 안의 빌트인 placeholder 경로(bower_components/.../_1x1.png)를
+      // 루트('/_1x1.png')로 교정한 뒤 로드한다. (파일 재업로드 없이 런타임에서 처리)
+      const projFixed = JSON.parse(
+        JSON.stringify(project).split('bower_components/entry-js/images/_1x1.png').join('/_1x1.png')
+      );
+      Entry.loadProject(projFixed);
       console.log(TAG, 'Entry.loadProject 완료');
 
       // 4) 실행 시작 (메서드가 버전마다 달라 방어적으로)
@@ -216,6 +221,13 @@
 
       console.log(TAG, '부팅 시퀀스 끝 — 화면이 보이면 성공입니다');
       setTimeout(hideOverlay, 600);
+
+      // 진단: 엔트리가 캔버스를 만들었는지 / 크기는 얼마인지
+      setTimeout(() => {
+        const cv = document.querySelector('#entryContainer canvas');
+        if (cv) console.log(TAG, 'canvas 생성됨:', cv.width + 'x' + cv.height, '표시:', getComputedStyle(cv).display);
+        else console.warn(TAG, 'canvas 없음 — 렌더 대상이 안 만들어짐');
+      }, 1500);
     } catch(e){
       console.error(TAG, e);
       showError('부팅 중 예외: <b>' + (e && e.message ? e.message : e) + '</b>');
