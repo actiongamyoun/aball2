@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>게임</title>
+
+<!-- 엔진 스타일 -->
+<link rel="stylesheet" href="lib/entry-tool.css" />
+<link rel="stylesheet" href="lib/entry.min.css" />
+
+<style>
+  :root{
+    --paper:#FCFCFD; --ink:#15171C; --muted:#8A909B; --line:#E8EAEE;
+    --accent:#5457E6; --immerse:#0C0D10; --pad:clamp(12px,2.5vh,32px); --r:16px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,system-ui,"Pretendard","맑은 고딕",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    min-height:100dvh; min-height:100vh;
+    display:flex; align-items:center; justify-content:center; padding:var(--pad);
+  }
+
+  /* 게임이 그려질 컨테이너 (16:9) */
+  .stage{
+    position:relative; aspect-ratio:16 / 9;
+    width:min(100%, calc((100dvh - 2*var(--pad)) * 16 / 9));
+    width:min(100%, calc((100vh - 2*var(--pad)) * 16 / 9));
+    max-width:1200px;
+    border-radius:var(--r); overflow:hidden; background:#fff;
+    border:1px solid var(--line);
+    box-shadow:0 1px 2px rgba(20,23,28,.04), 0 18px 50px -24px rgba(20,23,28,.22);
+  }
+  /* 엔트리가 만든 캔버스/스테이지를 컨테이너에 맞춤 */
+  .stage > canvas, .stage .entryContainerWorkspace, .stage > div{ max-width:100%; }
+
+  /* 로딩 / 에러 오버레이 */
+  .overlay{
+    position:absolute; inset:0; z-index:5;
+    display:flex; flex-direction:column; gap:14px; padding:24px;
+    align-items:center; justify-content:center; text-align:center;
+    background:var(--paper); transition:opacity .35s ease;
+  }
+  .overlay.hide{ opacity:0; pointer-events:none; }
+  .spinner{
+    width:34px; height:34px; border-radius:50%;
+    border:3px solid var(--line); border-top-color:var(--accent);
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .overlay .msg{ font-size:13px; color:var(--muted); line-height:1.6; max-width:420px; }
+  .overlay.error .msg{ color:#B4232A; }
+  .overlay.error .hint2{ color:var(--muted); font-size:12px; margin-top:4px; }
+
+  /* 컨트롤 */
+  .controls{ position:fixed; top:14px; right:14px; z-index:30; display:flex; gap:8px; }
+  .ctrl{
+    display:inline-flex; align-items:center; gap:7px; height:38px; padding:0 12px;
+    border:1px solid var(--line); background:rgba(252,252,253,.82);
+    backdrop-filter:saturate(160%) blur(8px); border-radius:10px;
+    color:var(--ink); font:inherit; font-size:13px; line-height:1; cursor:pointer;
+    transition:border-color .15s,color .15s,transform .06s;
+  }
+  .ctrl svg{ width:17px; height:17px; flex:none; }
+  .ctrl .label{ display:none; }
+  @media (min-width:760px){ .ctrl .label{ display:inline; } }
+  .ctrl:hover{ color:var(--accent); border-color:#D6D8F2; }
+  .ctrl:active{ transform:translateY(1px); }
+  .ctrl:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(8px);
+    z-index:40; background:var(--ink); color:#fff; font-size:13px; padding:10px 16px;
+    border-radius:999px; opacity:0; pointer-events:none; transition:opacity .2s,transform .2s;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .hint{
+    position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:25;
+    display:none; align-items:center; gap:8px; background:rgba(20,23,28,.9); color:#fff;
+    font-size:12.5px; padding:9px 14px; border-radius:999px; transition:opacity .3s;
+  }
+  .hint svg{ width:15px; height:15px; }
+  @media (orientation:portrait) and (max-width:760px){ .hint.on{ display:inline-flex; } }
+
+  .wrap:fullscreen{ background:var(--immerse); padding:0; }
+  .wrap:fullscreen .stage{
+    width:min(100vw, calc(100vh*16/9)); max-width:none;
+    border:0; border-radius:0; box-shadow:none;
+  }
+  .wrap:-webkit-full-screen{ background:var(--immerse); padding:0; }
+  .wrap:-webkit-full-screen .stage{ width:min(100vw,calc(100vh*16/9)); max-width:none; border:0; border-radius:0; }
+
+  @media (prefers-reduced-motion:reduce){ .spinner{ animation:none; } *{ transition:none !important; } }
+</style>
+</head>
+<body>
+
+<main class="wrap" id="wrap">
+  <div class="stage" id="entryContainer">
+    <div class="overlay" id="overlay">
+      <div class="spinner"></div>
+      <div class="msg" id="overlayMsg">엔진 불러오는 중…</div>
+    </div>
+  </div>
+</main>
+
+<div class="controls" id="controls">
+  <button class="ctrl" id="btnShare" type="button" aria-label="링크 복사">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+    <span class="label">공유</span>
+  </button>
+  <button class="ctrl" id="btnFull" type="button" aria-label="전체화면">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+    <span class="label">전체화면</span>
+  </button>
+</div>
+
+<div class="hint" id="hint">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></svg>
+  가로로 돌리면 더 크게 즐길 수 있어요
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ===================== 엔진 의존성 (순서 중요) ===================== -->
+<script src="lib/lodash.min.js"></script>
+<script src="lib/react.production.min.js"></script>
+<script src="lib/react-dom.production.min.js"></script>
+<script src="lib/jquery.min.js"></script>
+<script src="lib/createjs.min.js"></script>
+<script src="lib/bignumber.min.js"></script>
+<script src="lib/CanvasInput.js"></script>
+<script src="lib/ndgmr.Collision.js"></script>
+<script src="lib/handle.js"></script>
+<script src="lib/webfontloader.js"></script>
+<script src="lib/lang-ko.js"></script>
+<script src="lib/entry-tool.js"></script>
+<script src="lib/entry.min.js"></script>
+
+<!-- ===================== 부팅 ===================== -->
+<script>
+(function(){
+  const overlay = document.getElementById('overlay');
+  const overlayMsg = document.getElementById('overlayMsg');
+  const wrap = document.getElementById('wrap');
+  const toast = document.getElementById('toast');
+  const hint = document.getElementById('hint');
+  const TAG = '[entry-host]';
+
+  const hideOverlay = () => overlay.classList.add('hide');
+  const showError = (msg) => {
+    overlay.classList.remove('hide');
+    overlay.classList.add('error');
+    overlay.querySelector('.spinner') && overlay.querySelector('.spinner').remove();
+    overlayMsg.innerHTML = msg + '<div class="hint2">브라우저 콘솔(F12)의 빨간 에러를 캡처해서 보내주시면 다음 단계 잡아드릴게요.</div>';
+  };
+
+  async function boot(){
+    try {
+      if (typeof Entry === 'undefined'){
+        return showError('엔진(Entry)이 로드되지 않았습니다. lib 폴더의 스크립트 로드를 확인해주세요.');
+      }
+      console.log(TAG, 'Entry / EntryTool 로드됨');
+
+      // 1) 프로젝트 데이터
+      let res;
+      try { res = await fetch('project.json', { cache:'no-store' }); }
+      catch(e){
+        return showError('project.json 을 불러오지 못했습니다. <b>파일을 더블클릭하지 말고</b> 로컬 서버(http)로 열어주세요.');
+      }
+      if (!res.ok) return showError('project.json 응답 ' + res.status);
+      const project = await res.json();
+      console.log(TAG, '프로젝트 로드됨 — 씬', (project.scenes||[]).length, '/ 오브젝트', (project.objects||[]).length);
+
+      // 2) 초기화 (실행 전용 minimize 모드)
+      if (Entry.Event) Entry.creationChangedEvent = new Entry.Event(window);
+      Entry.init(document.getElementById('entryContainer'), { type: 'minimize' });
+      console.log(TAG, 'Entry.init(minimize) 완료');
+
+      // 3) 프로젝트 적용
+      Entry.loadProject(project);
+      console.log(TAG, 'Entry.loadProject 완료');
+
+      // 4) 실행 시작 (메서드가 버전마다 달라 방어적으로)
+      if (typeof Entry.start === 'function'){ Entry.start(); console.log(TAG, 'Entry.start()'); }
+      else if (Entry.engine && typeof Entry.engine.toggleRun === 'function'){ Entry.engine.toggleRun(); console.log(TAG, 'Entry.engine.toggleRun()'); }
+      else console.log(TAG, '자동 시작 메서드를 못 찾음 — 화면에 실행 버튼이 있으면 눌러보세요');
+
+      // 5) 컨테이너 크기에 맞춰 리사이즈
+      const doResize = () => { try { Entry.windowResized && Entry.windowResized(); } catch(e){} };
+      doResize(); window.addEventListener('resize', doResize);
+      window.addEventListener('orientationchange', () => setTimeout(doResize, 300));
+
+      console.log(TAG, '부팅 시퀀스 끝 — 화면이 보이면 성공입니다');
+      setTimeout(hideOverlay, 600);
+    } catch(e){
+      console.error(TAG, e);
+      showError('부팅 중 예외: <b>' + (e && e.message ? e.message : e) + '</b>');
+    }
+  }
+
+  // ── 컨트롤 ──
+  let toastTimer;
+  const showToast = (m) => {
+    toast.textContent = m; toast.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 1900);
+  };
+  document.getElementById('btnShare').addEventListener('click', async () => {
+    const url = location.href;
+    if (navigator.share){ try { await navigator.share({ title:document.title, url }); return; } catch(e){ if (e&&e.name==='AbortError') return; } }
+    try { await navigator.clipboard.writeText(url); showToast('링크를 복사했어요'); }
+    catch(e){ window.prompt('이 링크를 복사하세요', url); }
+  });
+  const reqFull = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
+  const exitFull = document.exitFullscreen || document.webkitExitFullscreen;
+  document.getElementById('btnFull').addEventListener('click', () => {
+    const fs = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!fs){ reqFull && reqFull.call(wrap); } else { exitFull && exitFull.call(document); }
+  });
+
+  // ── 모바일 세로 힌트 ──
+  const portrait = () => window.matchMedia('(orientation:portrait) and (max-width:760px)').matches;
+  const maybeHint = () => {
+    if (portrait()){ hint.classList.add('on'); hint.style.opacity='1'; setTimeout(()=>{ hint.style.opacity='0'; }, 3600); }
+    else hint.classList.remove('on');
+  };
+  maybeHint();
+  window.addEventListener('orientationchange', () => setTimeout(maybeHint, 300));
+
+  // 엔진 스크립트가 모두 평가된 뒤 부팅
+  if (document.readyState === 'complete' || document.readyState === 'interactive') boot();
+  else document.addEventListener('DOMContentLoaded', boot);
+})();
+</script>
+</body>
+</html>
