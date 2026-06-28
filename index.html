@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <title>게임</title>
 
 <!-- 엔진 스타일 -->
@@ -61,6 +64,9 @@
     box-shadow:0 6px 20px rgba(0,0,0,.28); white-space:nowrap; pointer-events:none;
   }
   body.pmode .top-hud{ display:block; }   /* 세로에서만 보임 */
+
+  /* 버전 표시 (최신 배포 떴는지 확인용) */
+  .ver{ position:fixed; left:6px; bottom:6px; z-index:50; font-size:10px; color:rgba(0,0,0,.4); pointer-events:none; font-family:monospace; }
 
   /* 세로 모드 전용 스킬/전체 토글 버튼 (아래쪽 여백에) */
   .skill-toggle{
@@ -166,6 +172,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="ver" id="ver"></div>
 
 <!-- ===================== 엔진 의존성 (순서 중요) ===================== -->
 <script src="lib/lodash.min.js"></script>
@@ -199,6 +206,12 @@
   const toast = document.getElementById('toast');
   const hint = document.getElementById('hint');
   const TAG = '[entry-host]';
+  const BUILD = 'v9';   // 배포할 때마다 올라감 — 화면 왼쪽아래/콘솔에 표시
+  console.log(TAG, 'build', BUILD);
+  try {
+    var verEl = document.getElementById('ver');
+    if (verEl) verEl.textContent = 'build ' + BUILD;
+  } catch(e){}
 
   const hideOverlay = () => overlay.classList.add('hide');
   const showError = (msg) => {
