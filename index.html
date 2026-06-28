@@ -49,8 +49,18 @@
   body.pmode .stage{ border:0; border-radius:0; box-shadow:none; max-width:none; background:#b1f59d; }  /* 위아래 여백 = 필드색 */
   body.pmode .hint{ display:none !important; }   /* 세로는 의도된 화면이라 '가로로 돌리세요' 안내 숨김 */
 
-  /* 엔트리 마우스 좌표 디버그 표시 / 좌표 토글 버튼 숨김 (게임엔 불필요) */
-  .entryMouseViewWorkspace_w, .entryCoordinateButtonWorkspace_w, .entryCoordinateButtonMinimize{ display:none !important; }
+  /* 엔트리 마우스 좌표 디버그 표시 / 좌표 토글 버튼 숨김 (게임엔 불필요) — 미니마이즈 클래스 포함 */
+  .entryMouseViewWorkspace_w, .entryMouseViewMinimize,
+  .entryCoordinateButtonWorkspace_w, .entryCoordinateButtonMinimize{ display:none !important; }
+
+  /* 세로 모드 상단 상태바 (남은 웨이브 / 스테이지) */
+  .top-hud{
+    display:none; position:fixed; top:max(12px, env(safe-area-inset-top)); left:50%; transform:translateX(-50%);
+    z-index:40; padding:8px 18px; border-radius:999px;
+    background:rgba(20,23,28,.82); color:#fff; font-size:15px; font-weight:700; letter-spacing:-.2px;
+    box-shadow:0 6px 20px rgba(0,0,0,.28); white-space:nowrap; pointer-events:none;
+  }
+  body.pmode .top-hud{ display:block; }   /* 세로에서만 보임 */
 
   /* 세로 모드 전용 스킬/전체 토글 버튼 (아래쪽 여백에) */
   .skill-toggle{
@@ -143,6 +153,9 @@
     <span class="label">전체화면</span>
   </button>
 </div>
+
+<!-- 세로 모드 상단 상태바 -->
+<div class="top-hud" id="topHud">게임 진행 중</div>
 
 <!-- 세로 모드 전용: 스킬·오른쪽 칸 보기/숨기기 토글 -->
 <button class="skill-toggle" id="skillToggle" type="button">스킬 보기</button>
@@ -267,7 +280,7 @@
       let portraitFull = false;   // 세로에서 false=메인판만 / true=전체(스킬·오른칸 보임)
       // ===== 세로 메인판 튜닝값 (스크린샷 보며 이 두 값만 조정: 0~1 비율) =====
       const PORTRAIT_CROP_L = 0.25;   // 왼쪽에서 잘라낼 비율(스킬 칸). ↑더 자름 / ↓덜 자름(스킬 보임)
-      const PORTRAIT_CROP_R = 0.10;   // 오른쪽에서 잘라낼 비율(오른쪽 칸). ↑더 자름 / ↓덜 자름
+      const PORTRAIT_CROP_R = 0.0;    // 오른쪽 잘라냄 0 → 오른쪽 벽까지 보임
       // 남은 가운데 띠의 '가로폭'을 화면 폭에 맞춤 → 메인판 양옆 다 보임, 위아래는 필드색
       // =====================================================================
       const layout = () => {
@@ -319,6 +332,30 @@
         skillBtn.textContent = portraitFull ? '메인판으로' : '스킬 보기';
         layout();
       });
+
+      // 상단 상태바: 게임 변수(남은 웨이브/스테이지) 읽어서 표시
+      const topHud = document.getElementById('topHud');
+      const readVar = (id) => {
+        try {
+          const vc = Entry.variableContainer;
+          if (!vc) return null;
+          if (vc.getVariable) { const v = vc.getVariable(id); if (v) return (v.getValue ? v.getValue() : v.value_); }
+          const arr = vc.variables_ || vc.variables;
+          if (arr) { const f = arr.find(x => (x.id_ === id || x.id === id)); if (f) return (f.getValue ? f.getValue() : f.value_); }
+        } catch(e){}
+        return null;
+      };
+      const updateHud = () => {
+        if (!topHud || !document.body.classList.contains('pmode')) return;
+        const stage = readVar('n9f2');   // 스테이지
+        const wave  = readVar('1zfm');   // 남은 웨이브
+        let t = '';
+        if (stage != null && stage !== '') t += '스테이지 ' + stage;
+        if (wave  != null && wave  !== '') t += (t ? '   ·   ' : '') + '남은 웨이브 ' + wave;
+        topHud.textContent = t || '게임 진행 중';
+      };
+      setInterval(updateHud, 500);
+
       layout();
       [60, 250, 600, 1200].forEach(function(t){ setTimeout(layout, t); });
       window.addEventListener('resize', layout);
