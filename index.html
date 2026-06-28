@@ -275,14 +275,14 @@
         }
       } catch(e){ console.warn(TAG, 'start 오류:', e.message); }
 
-      // 5) 레이아웃: 가로=전체 16:9 / 세로=가운데 메인판만 확대해 꽉 채움(양옆 자동 잘림)
+      // 5) 레이아웃: 가로=전체 16:9 / 세로=메인판 크게 채움(높이 기준)
       const PAD = 16;
-      let portraitFull = false;   // 세로에서 false=메인판만 / true=전체(스킬·오른칸 보임)
-      // ===== 세로 메인판 튜닝값 (스크린샷 보며 이 두 값만 조정: 0~1 비율) =====
-      const PORTRAIT_CROP_L = 0.25;   // 왼쪽에서 잘라낼 비율(스킬 칸). ↑더 자름 / ↓덜 자름(스킬 보임)
-      const PORTRAIT_CROP_R = 0.0;    // 오른쪽 잘라냄 0 → 오른쪽 벽까지 보임
-      // 남은 가운데 띠의 '가로폭'을 화면 폭에 맞춤 → 메인판 양옆 다 보임, 위아래는 필드색
-      // =====================================================================
+      let portraitFull = false;   // 세로에서 false=메인판 / true=전체(스킬·오른칸 보임)
+      // ===== 세로 메인판 튜닝값 (스크린샷 보며 이 두 값만 조정) =====
+      const PORTRAIT_FILL = 0.85;     // 화면 높이의 몇 %를 채울지(0~1). ↑더 크게(여백↓·양옆 더 잘림) / ↓작게
+      const PORTRAIT_ANCHOR_PX = 150; // 화면 왼쪽 끝에 둘 캔버스 가로 위치(0~640). ↓더 왼쪽(벽) / ↑더 오른쪽
+      // 세로: 높이를 채우고 왼쪽 벽 기준으로 정렬 → 메인판이 크게 나옴(오른쪽은 잘릴 수 있음)
+      // ===========================================================
       const layout = () => {
         const st = document.getElementById('entryContainer');
         if (!st) return;
@@ -300,10 +300,9 @@
             scale = W / 640;
             leftPx = 0;
           } else {
-            // 메인판 집중: 가운데 띠만 화면 폭에 (양옆 잘림)
-            const bandFrac = Math.max(0.2, 1 - PORTRAIT_CROP_L - PORTRAIT_CROP_R);
-            scale = W / (640 * bandFrac);
-            leftPx = -640 * PORTRAIT_CROP_L * scale;
+            // 메인판: 화면 높이의 PORTRAIT_FILL 만큼 채우고, 왼쪽 벽 기준 정렬
+            scale = (H * PORTRAIT_FILL) / 360;
+            leftPx = -PORTRAIT_ANCHOR_PX * scale;
           }
           const cw = 640 * scale, ch = 360 * scale;
           cv.style.setProperty('position', 'absolute', 'important');
