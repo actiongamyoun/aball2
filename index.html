@@ -206,7 +206,7 @@
   const toast = document.getElementById('toast');
   const hint = document.getElementById('hint');
   const TAG = '[entry-host]';
-  const BUILD = 'v9';   // 배포할 때마다 올라감 — 화면 왼쪽아래/콘솔에 표시
+  const BUILD = 'v10';   // 배포할 때마다 올라감 — 화면 왼쪽아래/콘솔에 표시
   console.log(TAG, 'build', BUILD);
   try {
     var verEl = document.getElementById('ver');
@@ -293,8 +293,8 @@
       let portraitFull = false;   // 세로에서 false=메인판 / true=전체(스킬·오른칸 보임)
       // ===== 세로 메인판 튜닝값 (스크린샷 보며 이 두 값만 조정) =====
       const PORTRAIT_FILL = 0.85;     // 화면 높이의 몇 %를 채울지(0~1). ↑더 크게(여백↓·양옆 더 잘림) / ↓작게
-      const PORTRAIT_ANCHOR_PX = 150; // 화면 왼쪽 끝에 둘 캔버스 가로 위치(0~640). ↓더 왼쪽(벽) / ↑더 오른쪽
-      // 세로: 높이를 채우고 왼쪽 벽 기준으로 정렬 → 메인판이 크게 나옴(오른쪽은 잘릴 수 있음)
+      const PORTRAIT_CENTER_PX = 350; // 화면 가로 중앙에 둘 캔버스 위치(0~640). ↑오른쪽 더 보임 / ↓왼쪽 더 보임
+      // 세로: 높이를 채우고 지정 지점을 화면 중앙에 → 크게 나오고, 중심을 좌우로 옮겨 보이는 영역 조절
       // ===========================================================
       const layout = () => {
         const st = document.getElementById('entryContainer');
@@ -313,9 +313,9 @@
             scale = W / 640;
             leftPx = 0;
           } else {
-            // 메인판: 화면 높이의 PORTRAIT_FILL 만큼 채우고, 왼쪽 벽 기준 정렬
+            // 메인판: 화면 높이의 PORTRAIT_FILL 만큼 채우고, 지정 지점을 화면 중앙에
             scale = (H * PORTRAIT_FILL) / 360;
-            leftPx = -PORTRAIT_ANCHOR_PX * scale;
+            leftPx = W/2 - PORTRAIT_CENTER_PX * scale;
           }
           const cw = 640 * scale, ch = 360 * scale;
           cv.style.setProperty('position', 'absolute', 'important');
